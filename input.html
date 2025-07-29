@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Poll Input</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Roboto', sans-serif; 
+      background: linear-gradient(135deg, #6fb1fc, #4364f7, #0052d4); 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      height: 100vh; 
+      margin: 0;
+      flex-direction: column;
+      color: #000;
+    }
+    h1 { 
+      margin-bottom: 20px; 
+      font-weight: 700; 
+      color: white;
+    }
+    #nameSection input, #nameSection select, #confirmBtn { 
+      width: 300px;
+      margin: 10px auto; 
+      font-size: 1.1rem; 
+      padding: 10px; 
+      border-radius: 8px; 
+      border: 1px solid #ccc;
+      outline: none;
+      font-family: 'Roboto', sans-serif;
+      display: block;
+    }
+    /* Confirm button - green */
+    #confirmBtn { 
+      background: #28a745; 
+      color: white; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: 500;
+      transition: 0.3s;
+    }
+    #confirmBtn:hover { background: #1e7e34; }
+    #changeNameBtn {
+      background: #28a745;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #changeNameBtn:hover { background: #1e7e34; }
+
+    /* Poll container */
+    .poll-container {
+      background: rgba(255,255,255,0.45);
+      border-radius: 15px;
+      padding: 20px;
+      margin-top: 20px;
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    #question { 
+      font-size: 1.4rem; 
+      margin: 10px 0 20px 0; 
+      font-weight: 500;
+    }
+    #options button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      font-size: 1.1rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Roboto', sans-serif;
+      font-weight: 500;
+      transition: 0.3s;
+    }
+    #options button:hover { background: #0056b3; }
+    #options button.selected { background: #28a745; }
+  </style>
+</head>
+<body>
+  <h1>Join the Poll</h1>
+
+  <!-- Name Selection Section -->
+  <div id="nameSection">
+    <input type="text" id="nameSearch" placeholder="Search your name...">
+    <select id="nameSelect"></select>
+    <button id="confirmBtn">Confirm</button>
+  </div>
+
+  <!-- After Confirm - Show Name Button -->
+  <button id="changeNameBtn" style="display:none;"></button>
+
+  <!-- Poll content (hidden until name confirmed) -->
+  <div id="pollContent" class="poll-container" style="display:none;">
+    <div id="question">Waiting for next question...</div>
+    <div id="options"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
+      authDomain: "testhost-bf3fe.firebaseapp.com",
+      projectId: "testhost-bf3fe",
+      storageBucket: "testhost-bf3fe.firebasestorage.app",
+      messagingSenderId: "1090261600630",
+      appId: "1:1090261600630:web:44017d7a1b0fddd3a99257"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const nameSelect = document.getElementById('nameSelect');
+    const nameSearch = document.getElementById('nameSearch');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const changeNameBtn = document.getElementById('changeNameBtn');
+    const nameSection = document.getElementById('nameSection');
+    const pollContent = document.getElementById('pollContent');
+    const questionDiv = document.getElementById('question');
+    const optionsDiv = document.getElementById('options');
+
+    let participantName = null;
+    let currentQuestionId = null;
+
+    // Load names
+    const participantList = ["Vivek","Priya","Sam","Anita","John","Sara"];
+    function populateNames(filter="") {
+      nameSelect.innerHTML = "";
+      const filtered = participantList.filter(n => n.toLowerCase().includes(filter.toLowerCase()));
+      filtered.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        nameSelect.appendChild(opt);
+      });
+      if (filtered.length > 0) nameSelect.value = filtered[0];
+    }
+    populateNames();
+    nameSearch.addEventListener('input', e => populateNames(e.target.value));
+
+    // Confirm name selection
+    confirmBtn.addEventListener('click', () => {
+      participantName = nameSelect.value;
+      nameSection.style.display = "none";
+      changeNameBtn.style.display = "block";
+      changeNameBtn.textContent = participantName;
+      pollContent.style.display = "block";
+    });
+
+    // Change name
+    changeNameBtn.addEventListener('click', () => {
+      nameSection.style.display = "block";
+      changeNameBtn.style.display = "none";
+      pollContent.style.display = "none";
+    });
+
+    // Submit answer
+    async function submitAnswer(choice, btn) {
+      if (!participantName) return alert("Please confirm your name first");
+      await setDoc(doc(db,"answers",participantName), { choice, questionId: currentQuestionId });
+      Array.from(optionsDiv.children).forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    // Listen for current question
+    onSnapshot(doc(db,"questions","current"), async (snap) => {
+      const cur = snap.data();
+      if (!cur || !cur.active) { 
+        questionDiv.innerText = "Waiting for next question...";
+        optionsDiv.innerHTML = ""; 
+        return;
+      }
+      const qSnap = await getDoc(doc(db,"questions","all","list",cur.questionId));
+      const q = qSnap.data();
+      if (!q) return;
+
+      currentQuestionId = cur.questionId;
+      questionDiv.innerText = q.text;
+      optionsDiv.innerHTML = "";
+      q.options.forEach(opt=>{
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.onclick = ()=>submitAnswer(opt, btn);
+        optionsDiv.appendChild(btn);
+      });
+    });
+  </script>
+</body>
+</html>

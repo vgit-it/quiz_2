@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quizmaster</title>
+  <style>
+    body { font-family:sans-serif; padding:20px; }
+    select, input, textarea { width:100%; margin:10px 0; padding:8px; }
+    button { padding:10px 20px; margin:10px 0; }
+    fieldset { margin:20px 0; }
+  </style>
+</head>
+<body>
+  <h1>Quizmaster Control</h1>
+
+  <!-- Section 1: Activate Question -->
+  <fieldset>
+    <legend>Activate Question</legend>
+    <select id="questionSelect"></select>
+    <button id="activateBtn">Activate Selected Question</button>
+  </fieldset>
+
+  <!-- Section 2: Add New Question -->
+  <fieldset>
+    <legend>Add New Question</legend>
+    <textarea id="newQuestionText" placeholder="Question text"></textarea>
+    <input id="newOptions" placeholder="Comma-separated options">
+    <input id="newFreezeTime" type="number" value="45000">
+    <button id="addQuestionBtn">Add Question</button>
+  </fieldset>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, addDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
+      authDomain: "testhost-bf3fe.firebaseapp.com",
+      projectId: "testhost-bf3fe",
+      storageBucket: "testhost-bf3fe.firebasestorage.app",
+      messagingSenderId: "1090261600630",
+      appId: "1:1090261600630:web:44017d7a1b0fddd3a99257"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const questionSelect = document.getElementById('questionSelect');
+    const activateBtn = document.getElementById('activateBtn');
+    const newQuestionText = document.getElementById('newQuestionText');
+    const newOptions = document.getElementById('newOptions');
+    const newFreezeTime = document.getElementById('newFreezeTime');
+    const addQuestionBtn = document.getElementById('addQuestionBtn');
+
+    let allQuestions = [];
+
+    // Load all questions
+    async function loadQuestions() {
+      const snap = await getDocs(collection(db,"questions","all","list"));
+      allQuestions = [];
+      snap.forEach(docSnap => {
+        allQuestions.push({id:docSnap.id, ...docSnap.data()});
+      });
+      questionSelect.innerHTML = "";
+      allQuestions.forEach(q=>{
+        const opt = document.createElement('option');
+        opt.value = q.id;
+        opt.textContent = q.text;
+        questionSelect.appendChild(opt);
+      });
+    }
+    loadQuestions();
+
+    // Activate question
+    activateBtn.addEventListener('click', async ()=>{
+      const selectedId = questionSelect.value;
+      await setDoc(doc(db,"questions","current"), { questionId: selectedId, active:true });
+      alert("Question activated!");
+    });
+
+    // Add new question
+    addQuestionBtn.addEventListener('click', async ()=>{
+      const qText = newQuestionText.value;
+      const opts = newOptions.value.split(',').map(o=>o.trim());
+      const freezeTime = parseInt(newFreezeTime.value);
+      const id = "q"+Date.now();
+      await setDoc(doc(db,"questions","all","list",id), {
+        text:qText,
+        options:opts,
+        freezeTime
+      });
+      alert("Question added!");
+      newQuestionText.value=""; newOptions.value=""; newFreezeTime.value=45000;
+      loadQuestions();
+    });
+  </script>
+</body>
+</html>
