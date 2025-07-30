@@ -36,7 +36,6 @@
       font-family: 'Roboto', sans-serif;
       display: block;
     }
-    /* Confirm button - green */
     #confirmBtn { 
       background: #28a745; 
       color: white; 
@@ -59,7 +58,6 @@
     }
     #changeNameBtn:hover { background: #1e7e34; }
 
-    /* Poll container */
     .poll-container {
       background: rgba(255,255,255,0.45);
       border-radius: 2vh;
@@ -93,7 +91,6 @@
     #options button:hover { background: #0056b3; }
     #options button.selected { background: #28a745; }
 
-    /* Smaller screens */
     @media (max-width: 600px) {
       #question { font-size: 2.5vh; }
       #options button { font-size: 2vh; padding: 1.8vh; }
@@ -121,7 +118,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
@@ -145,9 +142,19 @@
 
     let participantName = null;
     let currentQuestionId = null;
+    let participantList = [];
 
-    // Load names
-    const participantList = ["Vivek","Priya","Sam","Anita","John","Sara"];
+    // Fetch participants dynamically from Firestore
+    async function loadParticipants() {
+      const snapshot = await getDocs(collection(db, "participants"));
+      participantList = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && data.name) participantList.push(data.name);
+      });
+      populateNames();
+    }
+
     function populateNames(filter="") {
       nameSelect.innerHTML = "";
       const filtered = participantList.filter(n => n.toLowerCase().includes(filter.toLowerCase()));
@@ -159,7 +166,7 @@
       });
       if (filtered.length > 0) nameSelect.value = filtered[0];
     }
-    populateNames();
+
     nameSearch.addEventListener('input', e => populateNames(e.target.value));
 
     // Confirm name selection
@@ -208,6 +215,9 @@
         optionsDiv.appendChild(btn);
       });
     });
+
+    // Initial load
+    loadParticipants();
   </script>
 </body>
 </html>
