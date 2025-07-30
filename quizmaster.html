@@ -46,15 +46,6 @@
 <body>
   <h1>Quizmaster Control Panel</h1>
 
-  <!-- Participant Management -->
-  <div class="section">
-    <h2>Participants</h2>
-    <input type="text" id="newParticipantName" placeholder="Enter participant name">
-    <button id="addParticipantBtn">Add Participant</button>
-    <div id="participantList" class="participant-list"></div>
-    <button id="resetEliminationBtn" style="background:#28a745;">Reset Eliminations</button>
-  </div>
-
   <!-- Question Management -->
   <div class="section">
     <h2>Questions</h2>
@@ -76,6 +67,15 @@
     <button id="startQuestionBtn" style="background:#28a745;">Start Question</button>
     <button id="stopQuestionBtn" style="background:#dc3545;">Stop Question</button>
     <button id="eliminateBtn" style="background:#ff6600;">Eliminate</button>
+  </div>
+
+  <!-- Participant Management -->
+  <div class="section">
+    <h2>Participants</h2>
+    <button id="resetEliminationBtn" style="background:#28a745;">Reset Eliminations</button>
+    <input type="text" id="newParticipantName" placeholder="Enter participant name">
+    <button id="addParticipantBtn">Add Participant</button>
+    <div id="participantList" class="participant-list"></div>
   </div>
 
   <script type="module">
@@ -175,7 +175,7 @@
       await setDoc(doc(db, "questions", "current"), { active: false });
     });
 
-    // Elimination
+    // Elimination with blinking
     eliminateBtn.addEventListener('click', async () => {
       const curSnap = await getDocs(collection(db, "answers"));
       const participantsPositions = {};
@@ -194,14 +194,23 @@
       }
 
       const randomQuadrant = Array.from(activeOptions)[Math.floor(Math.random() * activeOptions.size)];
-      const snap = await getDocs(collection(db, "participants"));
-      snap.forEach(async (docSnap) => {
-        const name = docSnap.id;
-        if (participantsPositions[name] !== randomQuadrant) {
-          await updateDoc(doc(db, "participants", name), { eliminated: true });
-        }
-      });
-      alert(`Quadrant ${randomQuadrant + 1} survived! Others eliminated.`);
+
+      // 1) Update current question with blinkingQuadrants (for 2 sec blink)
+      await updateDoc(doc(db, "questions", "current"), { blinkingQuadrants: [randomQuadrant] });
+
+      // 2) Wait 2 seconds before applying elimination
+      setTimeout(async () => {
+        const snap = await getDocs(collection(db, "participants"));
+        snap.forEach(async (docSnap) => {
+          const name = docSnap.id;
+          if (participantsPositions[name] !== randomQuadrant) {
+            await updateDoc(doc(db, "participants", name), { eliminated: true });
+          }
+        });
+        // Clear blinkingQuadrants after elimination
+        await updateDoc(doc(db, "questions", "current"), { blinkingQuadrants: [] });
+        alert(`Quadrant ${randomQuadrant + 1} survived! Others eliminated.`);
+      }, 2000);
     });
   </script>
 </body>
