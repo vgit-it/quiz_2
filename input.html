@@ -90,6 +90,10 @@
     }
     #options button:hover { background: #0056b3; }
     #options button.selected { background: #28a745; }
+    #options button.disabled {
+      background: #888;
+      cursor: not-allowed;
+    }
 
     @media (max-width: 600px) {
       #question { font-size: 2.5vh; }
@@ -100,17 +104,14 @@
 <body>
   <h1>Join the Poll</h1>
 
-  <!-- Name Selection Section -->
   <div id="nameSection">
     <input type="text" id="nameSearch" placeholder="Search your name...">
     <select id="nameSelect"></select>
     <button id="confirmBtn">Confirm</button>
   </div>
 
-  <!-- After Confirm - Show Name Button -->
   <button id="changeNameBtn" style="display:none;"></button>
 
-  <!-- Poll content (hidden until name confirmed) -->
   <div id="pollContent" class="poll-container" style="display:none;">
     <div id="question">Waiting for next question...</div>
     <div id="options"></div>
@@ -118,7 +119,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
@@ -142,19 +143,10 @@
 
     let participantName = null;
     let currentQuestionId = null;
+    let isEliminated = false;
+
+    // Load names dynamically
     let participantList = [];
-
-    // Fetch participants dynamically from Firestore
-    async function loadParticipants() {
-      const snapshot = await getDocs(collection(db, "participants"));
-      participantList = [];
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data && data.name) participantList.push(data.name);
-      });
-      populateNames();
-    }
-
     function populateNames(filter="") {
       nameSelect.innerHTML = "";
       const filtered = participantList.filter(n => n.toLowerCase().includes(filter.toLowerCase()));
@@ -167,15 +159,32 @@
       if (filtered.length > 0) nameSelect.value = filtered[0];
     }
 
+    import { collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+    // Realtime load participants
+    onSnapshot(collection(db, "participants"), snap => {
+      participantList = [];
+      snap.forEach(docSnap => participantList.push(docSnap.id));
+      populateNames(nameSearch.value);
+    });
+
     nameSearch.addEventListener('input', e => populateNames(e.target.value));
 
     // Confirm name selection
     confirmBtn.addEventListener('click', () => {
       participantName = nameSelect.value;
+      if (!participantName) return;
       nameSection.style.display = "none";
       changeNameBtn.style.display = "block";
       changeNameBtn.textContent = participantName;
       pollContent.style.display = "block";
+
+      // Watch elimination status
+      onSnapshot(doc(db, "participants", participantName), (snap) => {
+        const data = snap.data();
+        isEliminated = data?.eliminated || false;
+        updateOptionsDisabledState();
+      });
     });
 
     // Change name
@@ -188,10 +197,26 @@
     // Submit answer
     async function submitAnswer(choice, btn) {
       if (!participantName) return alert("Please confirm your name first");
-      await setDoc(doc(db,"answers",participantName), { choice, questionId: currentQuestionId });
+      if (isEliminated) return alert("You are eliminated!");
+      await setDoc(doc(db,"answers",participantName), { choice, choiceIndex: currentOptions.indexOf(choice), questionId: currentQuestionId });
       Array.from(optionsDiv.children).forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
     }
+
+    // Update buttons disabled state based on elimination
+    function updateOptionsDisabledState() {
+      Array.from(optionsDiv.children).forEach(btn => {
+        if (isEliminated) {
+          btn.classList.add('disabled');
+          btn.disabled = true;
+        } else {
+          btn.classList.remove('disabled');
+          btn.disabled = false;
+        }
+      });
+    }
+
+    let currentOptions = [];
 
     // Listen for current question
     onSnapshot(doc(db,"questions","current"), async (snap) => {
@@ -199,6 +224,7 @@
       if (!cur || !cur.active) { 
         questionDiv.innerText = "Waiting for next question...";
         optionsDiv.innerHTML = ""; 
+        currentOptions = [];
         return;
       }
       const qSnap = await getDoc(doc(db,"questions","all","list",cur.questionId));
@@ -207,6 +233,7 @@
 
       currentQuestionId = cur.questionId;
       questionDiv.innerText = q.text;
+      currentOptions = q.options;
       optionsDiv.innerHTML = "";
       q.options.forEach(opt=>{
         const btn = document.createElement('button');
@@ -214,10 +241,8 @@
         btn.onclick = ()=>submitAnswer(opt, btn);
         optionsDiv.appendChild(btn);
       });
+      updateOptionsDisabledState();
     });
-
-    // Initial load
-    loadParticipants();
   </script>
 </body>
 </html>
