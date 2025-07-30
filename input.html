@@ -15,18 +15,22 @@
       margin: 0;
       flex-direction: column;
       color: #000;
+      padding: 2vh;
     }
     h1 { 
-      margin-bottom: 20px; 
+      margin-bottom: 2vh; 
       font-weight: 700; 
       color: white;
+      font-size: 4vh;
+      text-align: center;
     }
     #nameSection input, #nameSection select, #confirmBtn { 
-      width: 300px;
-      margin: 10px auto; 
-      font-size: 1.1rem; 
-      padding: 10px; 
-      border-radius: 8px; 
+      width: 80%;
+      max-width: 400px;
+      margin: 1vh auto; 
+      font-size: 2vh; 
+      padding: 1.5vh; 
+      border-radius: 1vh; 
       border: 1px solid #ccc;
       outline: none;
       font-family: 'Roboto', sans-serif;
@@ -45,11 +49,11 @@
     #changeNameBtn {
       background: #28a745;
       color: white;
-      padding: 10px 20px;
+      padding: 1.5vh 3vh;
       border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      margin-bottom: 15px;
+      border-radius: 1vh;
+      font-size: 2vh;
+      margin-bottom: 2vh;
       cursor: pointer;
       transition: 0.3s;
     }
@@ -58,28 +62,29 @@
     /* Poll container */
     .poll-container {
       background: rgba(255,255,255,0.45);
-      border-radius: 15px;
-      padding: 20px;
-      margin-top: 20px;
-      width: 400px;
+      border-radius: 2vh;
+      padding: 3vh;
+      margin-top: 2vh;
+      width: 80%;
+      max-width: 600px;
       text-align: center;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.2);
     }
     #question { 
-      font-size: 1.4rem; 
-      margin: 10px 0 20px 0; 
+      font-size: 3vh; 
+      margin: 1vh 0 2vh 0; 
       font-weight: 500;
     }
     #options button {
       display: block;
       width: 100%;
-      margin: 10px 0;
-      padding: 12px;
-      font-size: 1.1rem;
+      margin: 1.5vh 0;
+      padding: 2vh;
+      font-size: 2.2vh;
       background: #007bff;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 1vh;
       cursor: pointer;
       font-family: 'Roboto', sans-serif;
       font-weight: 500;
@@ -87,6 +92,12 @@
     }
     #options button:hover { background: #0056b3; }
     #options button.selected { background: #28a745; }
+
+    /* Smaller screens */
+    @media (max-width: 600px) {
+      #question { font-size: 2.5vh; }
+      #options button { font-size: 2vh; padding: 1.8vh; }
+    }
   </style>
 </head>
 <body>
