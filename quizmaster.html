@@ -2,80 +2,85 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Quizmaster Control</title>
-  <link href="https://fonts.googleapis.com/css2?family=Irish+Grover&display=swap" rel="stylesheet">
+  <title>Quizmaster Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family:'Irish Grover', cursive; background:#222; color:#fff; padding:20px; margin:0; }
-    h1 { font-size:2.5rem; text-align:center; }
-    label { display:block; margin-top:15px; font-size:1.3rem; }
-    select, input[type=text] { 
-      padding:10px; font-size:1.1rem; width:100%; margin-top:5px; 
-      border:none; border-radius:6px;
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #1e1e1e;
+      color: #fff;
+      padding: 2vh;
+      display: flex;
+      flex-direction: column;
+      gap: 2vh;
     }
-    button { 
-      margin-top:15px; padding:10px 20px; font-size:1.2rem; 
-      background:#444; color:#fff; border:none; cursor:pointer; 
-      border-radius:6px; width:100%;
+    h2 { margin: 0 0 1vh 0; }
+    .section {
+      background: #2c2c2c;
+      padding: 2vh;
+      border-radius: 1vh;
     }
-    button:hover { background:#666; }
-    #modeToggle, #questionsList, #newQuestionForm, #participantsForm { 
-      margin-top:20px; background:#333; padding:15px; border-radius:8px; 
+    input, select, button, textarea {
+      font-family: inherit;
+      padding: 1vh;
+      border-radius: 0.5vh;
+      border: none;
+      font-size: 2vh;
+      margin: 0.5vh 0;
+      width: 100%;
     }
-    .container { display:flex; flex-direction:row; gap:20px; flex-wrap:wrap; }
-    .panel { flex:1; min-width:280px; }
-    #newQuestionForm h2, #participantsForm h2 { font-size:1.8rem; text-align:center; }
-    @media (max-width:768px) {
-      h1 { font-size:2rem; }
-      label { font-size:1.1rem; }
-      button { font-size:1.1rem; }
-      .container { flex-direction:column; }
+    button { background: #007bff; color: white; cursor: pointer; font-weight: 500; }
+    button:hover { background: #0056b3; }
+    .participant-list div {
+      background: #444;
+      margin: 0.5vh 0;
+      padding: 0.5vh;
+      border-radius: 0.5vh;
+      cursor: pointer;
     }
+    .participant-list div.eliminated { opacity: 0.5; background: #8b0000 !important; }
+    textarea { resize: vertical; min-height: 8vh; }
   </style>
 </head>
 <body>
-  <h1>Quizmaster Control</h1>
-  
-  <div class="container">
-    <!-- Mode Panel -->
-    <div class="panel" id="modeToggle">
-      <label for="mode">Mode:</label>
-      <select id="mode">
-        <option value="normal">Normal</option>
-        <option value="balanced">Balanced</option>
-      </select>
-      <button id="applyMode">Apply Mode</button>
-    </div>
+  <h1>Quizmaster Control Panel</h1>
 
-    <!-- Questions Panel -->
-    <div class="panel" id="questionsList">
-      <label for="questionSelect">Select Question:</label>
-      <select id="questionSelect"></select>
-      <button id="activateQuestion">Activate Question</button>
-      <button id="deactivateQuestion">Deactivate Question</button>
-    </div>
+  <!-- Participant Management -->
+  <div class="section">
+    <h2>Participants</h2>
+    <input type="text" id="newParticipantName" placeholder="Enter participant name">
+    <button id="addParticipantBtn">Add Participant</button>
+    <div id="participantList" class="participant-list"></div>
+    <button id="resetEliminationBtn" style="background:#28a745;">Reset Eliminations</button>
   </div>
 
-  <!-- Add Question -->
-  <div id="newQuestionForm">
-    <h2>Add New Question</h2>
-    <label for="newQuestionText">Question Text:</label>
-    <input type="text" id="newQuestionText" placeholder="Enter question text">
-    <label for="newOptions">Options (comma separated):</label>
-    <input type="text" id="newOptions" placeholder="Option1, Option2, Option3, Option4">
-    <button id="addQuestion">Add Question</button>
+  <!-- Question Management -->
+  <div class="section">
+    <h2>Questions</h2>
+    <input type="text" id="newQuestionText" placeholder="Question text">
+    <textarea id="newQuestionOptions" placeholder="Enter options (one per line)"></textarea>
+    <button id="addQuestionBtn">Add Question</button>
+    <select id="questionSelect"></select>
   </div>
 
-  <!-- Add Participants -->
-  <div id="participantsForm">
-    <h2>Manage Participants</h2>
-    <label for="newParticipant">Add New Participant:</label>
-    <input type="text" id="newParticipant" placeholder="Enter participant name">
-    <button id="addParticipant">Add Participant</button>
+  <!-- Game Controls -->
+  <div class="section">
+    <h2>Game Controls</h2>
+    <label>Mode:</label>
+    <select id="modeSelect">
+      <option value="normal">Normal</option>
+      <option value="balanced">Balanced</option>
+      <option value="elimination">Elimination</option>
+    </select>
+    <button id="startQuestionBtn" style="background:#28a745;">Start Question</button>
+    <button id="stopQuestionBtn" style="background:#dc3545;">Stop Question</button>
+    <button id="eliminateBtn" style="background:#ff6600;">Eliminate</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDocs, updateDoc, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
@@ -88,67 +93,116 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const modeSelect = document.getElementById('mode');
-    const applyModeBtn = document.getElementById('applyMode');
-    const questionSelect = document.getElementById('questionSelect');
-    const activateBtn = document.getElementById('activateQuestion');
-    const deactivateBtn = document.getElementById('deactivateQuestion');
-    const addQuestionBtn = document.getElementById('addQuestion');
-    const addParticipantBtn = document.getElementById('addParticipant');
+    const newParticipantName = document.getElementById('newParticipantName');
+    const addParticipantBtn = document.getElementById('addParticipantBtn');
+    const participantListDiv = document.getElementById('participantList');
+    const resetEliminationBtn = document.getElementById('resetEliminationBtn');
 
+    const newQuestionText = document.getElementById('newQuestionText');
+    const newQuestionOptions = document.getElementById('newQuestionOptions');
+    const addQuestionBtn = document.getElementById('addQuestionBtn');
+    const questionSelect = document.getElementById('questionSelect');
+
+    const modeSelect = document.getElementById('modeSelect');
+    const startQuestionBtn = document.getElementById('startQuestionBtn');
+    const stopQuestionBtn = document.getElementById('stopQuestionBtn');
+    const eliminateBtn = document.getElementById('eliminateBtn');
+
+    // Add participant
+    addParticipantBtn.addEventListener('click', async () => {
+      const name = newParticipantName.value.trim();
+      if (!name) return alert("Enter a name");
+      await setDoc(doc(db, "participants", name), { name, isActive: true, eliminated: false });
+      newParticipantName.value = "";
+    });
+
+    // Render participants
+    function renderParticipants(snapshot) {
+      participantListDiv.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const div = document.createElement('div');
+        div.textContent = data.name + (data.eliminated ? " (Eliminated)" : "");
+        div.className = data.eliminated ? "eliminated" : "";
+        div.onclick = async () => {
+          await updateDoc(doc(db, "participants", data.name), { eliminated: !data.eliminated });
+        };
+        participantListDiv.appendChild(div);
+      });
+    }
+    onSnapshot(collection(db, "participants"), renderParticipants);
+
+    // Reset eliminations
+    resetEliminationBtn.addEventListener('click', async () => {
+      const snap = await getDocs(collection(db, "participants"));
+      snap.forEach(async (docSnap) => {
+        await updateDoc(doc(db, "participants", docSnap.id), { eliminated: false });
+      });
+    });
+
+    // Add question
+    addQuestionBtn.addEventListener('click', async () => {
+      const text = newQuestionText.value.trim();
+      const options = newQuestionOptions.value.trim().split("\n").map(o => o.trim()).filter(o => o);
+      if (!text || options.length < 2) return alert("Enter question and at least 2 options");
+      await addDoc(collection(db, "questions", "all", "list"), { text, options });
+      newQuestionText.value = "";
+      newQuestionOptions.value = "";
+      loadQuestions();
+    });
+
+    // Load questions into dropdown
     async function loadQuestions() {
-      const qs = await getDocs(collection(db, "questions", "all", "list"));
-      questionSelect.innerHTML = '';
-      qs.forEach(docSnap => {
-        const opt = document.createElement('option');
-        opt.value = docSnap.id;
-        opt.textContent = docSnap.data().text;
-        questionSelect.appendChild(opt);
+      onSnapshot(collection(db, "questions", "all", "list"), (qsnap) => {
+        questionSelect.innerHTML = "";
+        qsnap.forEach(docSnap => {
+          const opt = document.createElement('option');
+          opt.value = docSnap.id;
+          opt.textContent = docSnap.data().text;
+          questionSelect.appendChild(opt);
+        });
       });
     }
     loadQuestions();
 
-    applyModeBtn.onclick = async () => {
-      const mode = modeSelect.value;
-      await updateDoc(doc(db,"questions","current"), { mode: mode });
-      alert("Mode updated to " + mode);
-    };
-
-    activateBtn.onclick = async () => {
+    // Start/Stop question
+    startQuestionBtn.addEventListener('click', async () => {
       const qId = questionSelect.value;
-      await updateDoc(doc(db,"questions","current"), { active: true, questionId: qId });
-      alert("Activated question: " + qId);
-    };
+      if (!qId) return alert("Select a question");
+      await setDoc(doc(db, "questions", "current"), { questionId: qId, mode: modeSelect.value, active: true });
+    });
+    stopQuestionBtn.addEventListener('click', async () => {
+      await setDoc(doc(db, "questions", "current"), { active: false });
+    });
 
-    deactivateBtn.onclick = async () => {
-      await updateDoc(doc(db,"questions","current"), { active: false });
-      alert("Question deactivated");
-    };
+    // Elimination
+    eliminateBtn.addEventListener('click', async () => {
+      const curSnap = await getDocs(collection(db, "answers"));
+      const participantsPositions = {};
+      curSnap.forEach(docSnap => {
+        participantsPositions[docSnap.id] = docSnap.data().choiceIndex ?? null;
+      });
 
-    addQuestionBtn.onclick = async () => {
-      const text = document.getElementById('newQuestionText').value.trim();
-      const options = document.getElementById('newOptions').value.split(',').map(o => o.trim()).filter(o => o);
-      if (!text || options.length < 2) {
-        alert("Enter question and at least 2 options");
+      const activeOptions = new Set(Object.values(participantsPositions).filter(v => v !== null));
+      if (activeOptions.size < 1) {
+        alert("No one selected a quadrant! Eliminating all.");
+        const snap = await getDocs(collection(db, "participants"));
+        snap.forEach(async (docSnap) => {
+          await updateDoc(doc(db, "participants", docSnap.id), { eliminated: true });
+        });
         return;
       }
-      const newQRef = doc(collection(db,"questions","all","list"));
-      await setDoc(newQRef, { text: text, options: options });
-      alert("Added new question");
-      loadQuestions();
-    };
 
-    addParticipantBtn.onclick = async () => {
-      const name = document.getElementById('newParticipant').value.trim();
-      if (!name) {
-        alert("Enter a valid participant name");
-        return;
-      }
-      const newPRef = doc(db,"participants", name);
-      await setDoc(newPRef, { name: name, isActive: true });
-      alert("Added participant: " + name);
-      document.getElementById('newParticipant').value = "";
-    };
+      const randomQuadrant = Array.from(activeOptions)[Math.floor(Math.random() * activeOptions.size)];
+      const snap = await getDocs(collection(db, "participants"));
+      snap.forEach(async (docSnap) => {
+        const name = docSnap.id;
+        if (participantsPositions[name] !== randomQuadrant) {
+          await updateDoc(doc(db, "participants", name), { eliminated: true });
+        }
+      });
+      alert(`Quadrant ${randomQuadrant + 1} survived! Others eliminated.`);
+    });
   </script>
 </body>
 </html>
