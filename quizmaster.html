@@ -2,36 +2,106 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Quizmaster</title>
+  <title>Quizmaster Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=Irish+Grover&display=swap" rel="stylesheet">
   <style>
-    body { font-family:sans-serif; padding:20px; }
-    select, input, textarea { width:100%; margin:10px 0; padding:8px; }
-    button { padding:10px 20px; margin:10px 0; }
-    fieldset { margin:20px 0; }
+    body { 
+      font-family:'Irish Grover', cursive; 
+      background:#222; 
+      color:#fff; 
+      padding:20px; 
+      margin:0;
+      box-sizing:border-box;
+    }
+    h1 { font-size:2.5rem; text-align:center; }
+    label { display:block; margin-top:15px; font-size:1.3rem; }
+    select, input[type=text] { 
+      padding:10px; 
+      font-size:1.1rem; 
+      width:100%; 
+      margin-top:5px; 
+      border:none;
+      border-radius:6px;
+    }
+    button { 
+      margin-top:15px; 
+      padding:10px 20px; 
+      font-size:1.2rem; 
+      background:#444; 
+      color:#fff; 
+      border:none; 
+      cursor:pointer; 
+      border-radius:6px;
+      width:100%;
+    }
+    button:hover { background:#666; }
+    #modeToggle, #questionsList, #newQuestionForm { 
+      margin-top:20px; 
+      background:#333; 
+      padding:15px; 
+      border-radius:8px; 
+    }
+
+    /* Make layout flexible */
+    .container {
+      display:flex;
+      flex-direction:row;
+      gap:20px;
+      flex-wrap:wrap;
+    }
+    .panel {
+      flex:1;
+      min-width:280px;
+    }
+
+    /* Headings for sections */
+    #newQuestionForm h2 { font-size:1.8rem; text-align:center; }
+
+    /* Mobile adjustments */
+    @media (max-width:768px) {
+      h1 { font-size:2rem; }
+      label { font-size:1.1rem; }
+      button { font-size:1.1rem; }
+      .container { flex-direction:column; }
+    }
   </style>
 </head>
 <body>
   <h1>Quizmaster Control</h1>
+  
+  <div class="container">
+    <!-- Mode Panel -->
+    <div class="panel" id="modeToggle">
+      <label for="mode">Mode:</label>
+      <select id="mode">
+        <option value="normal">Normal</option>
+        <option value="balanced">Balanced</option>
+      </select>
+      <button id="applyMode">Apply Mode</button>
+    </div>
 
-  <!-- Section 1: Activate Question -->
-  <fieldset>
-    <legend>Activate Question</legend>
-    <select id="questionSelect"></select>
-    <button id="activateBtn">Activate Selected Question</button>
-  </fieldset>
+    <!-- Questions Panel -->
+    <div class="panel" id="questionsList">
+      <label for="questionSelect">Select Question:</label>
+      <select id="questionSelect"></select>
+      <button id="activateQuestion">Activate Question</button>
+      <button id="deactivateQuestion">Deactivate Question</button>
+    </div>
+  </div>
 
-  <!-- Section 2: Add New Question -->
-  <fieldset>
-    <legend>Add New Question</legend>
-    <textarea id="newQuestionText" placeholder="Question text"></textarea>
-    <input id="newOptions" placeholder="Comma-separated options">
-    <input id="newFreezeTime" type="number" value="45000">
-    <button id="addQuestionBtn">Add Question</button>
-  </fieldset>
+  <!-- Add Question -->
+  <div id="newQuestionForm">
+    <h2>Add New Question</h2>
+    <label for="newQuestionText">Question Text:</label>
+    <input type="text" id="newQuestionText" placeholder="Enter question text">
+    <label for="newOptions">Options (comma separated):</label>
+    <input type="text" id="newOptions" placeholder="Option1, Option2, Option3, Option4">
+    <button id="addQuestion">Add Question</button>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, addDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCrlqToml9ZFFNZ0zZ7vXes-uR2i66iEcM",
@@ -44,54 +114,54 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    const modeSelect = document.getElementById('mode');
+    const applyModeBtn = document.getElementById('applyMode');
     const questionSelect = document.getElementById('questionSelect');
-    const activateBtn = document.getElementById('activateBtn');
-    const newQuestionText = document.getElementById('newQuestionText');
-    const newOptions = document.getElementById('newOptions');
-    const newFreezeTime = document.getElementById('newFreezeTime');
-    const addQuestionBtn = document.getElementById('addQuestionBtn');
+    const activateBtn = document.getElementById('activateQuestion');
+    const deactivateBtn = document.getElementById('deactivateQuestion');
+    const addQuestionBtn = document.getElementById('addQuestion');
 
-    let allQuestions = [];
-
-    // Load all questions
     async function loadQuestions() {
-      const snap = await getDocs(collection(db,"questions","all","list"));
-      allQuestions = [];
-      snap.forEach(docSnap => {
-        allQuestions.push({id:docSnap.id, ...docSnap.data()});
-      });
-      questionSelect.innerHTML = "";
-      allQuestions.forEach(q=>{
+      const qs = await getDocs(collection(db, "questions", "all", "list"));
+      questionSelect.innerHTML = '';
+      qs.forEach(docSnap => {
         const opt = document.createElement('option');
-        opt.value = q.id;
-        opt.textContent = q.text;
+        opt.value = docSnap.id;
+        opt.textContent = docSnap.data().text;
         questionSelect.appendChild(opt);
       });
     }
     loadQuestions();
 
-    // Activate question
-    activateBtn.addEventListener('click', async ()=>{
-      const selectedId = questionSelect.value;
-      await setDoc(doc(db,"questions","current"), { questionId: selectedId, active:true });
-      alert("Question activated!");
-    });
+    applyModeBtn.onclick = async () => {
+      const mode = modeSelect.value;
+      await updateDoc(doc(db,"questions","current"), { mode: mode });
+      alert("Mode updated to " + mode);
+    };
 
-    // Add new question
-    addQuestionBtn.addEventListener('click', async ()=>{
-      const qText = newQuestionText.value;
-      const opts = newOptions.value.split(',').map(o=>o.trim());
-      const freezeTime = parseInt(newFreezeTime.value);
-      const id = "q"+Date.now();
-      await setDoc(doc(db,"questions","all","list",id), {
-        text:qText,
-        options:opts,
-        freezeTime
-      });
-      alert("Question added!");
-      newQuestionText.value=""; newOptions.value=""; newFreezeTime.value=45000;
+    activateBtn.onclick = async () => {
+      const qId = questionSelect.value;
+      await updateDoc(doc(db,"questions","current"), { active: true, questionId: qId });
+      alert("Activated question: " + qId);
+    };
+
+    deactivateBtn.onclick = async () => {
+      await updateDoc(doc(db,"questions","current"), { active: false });
+      alert("Question deactivated");
+    };
+
+    addQuestionBtn.onclick = async () => {
+      const text = document.getElementById('newQuestionText').value.trim();
+      const options = document.getElementById('newOptions').value.split(',').map(o => o.trim()).filter(o => o);
+      if (!text || options.length < 2) {
+        alert("Enter question and at least 2 options");
+        return;
+      }
+      const newQRef = doc(collection(db,"questions","all","list"));
+      await setDoc(newQRef, { text: text, options: options });
+      alert("Added new question");
       loadQuestions();
-    });
+    };
   </script>
 </body>
 </html>
